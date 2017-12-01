@@ -25,3 +25,11 @@ int net_hangup(stream_t * conn) {
     return -1;
   }
 }
+
+
+#include <stdio.h>
+int net_init(int argc, char **argv){
+  printf("NET_INIT: argv[0] = '%s'\n", argv[0]);
+}
+
+__attribute__((section(".init_array"))) static void *net_constructor = &net_init;
