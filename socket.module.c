@@ -4,6 +4,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <string.h>
 #include <strings.h>
 #include <unistd.h>
 
@@ -14,14 +15,14 @@ static int _type;
 
 export int type() {
   if (_type == 0) {
-    _type = stream.register("tlssocket");
+    _type = stream.register("socket");
   }
 
   return _type;
 }
 
 export
-stream.t connect(const char * host, int port) {
+stream.t * connect(const char * host, int port) {
 	int sockfd;
 
 	struct sockaddr_in serv_addr;
@@ -30,7 +31,7 @@ stream.t connect(const char * host, int port) {
 
 	if (sockfd < 0) {
     int e = errno;
-    return stream.error((stream.t) {0}, e, strerror(e));
+    return stream.error(NULL, e, strerror(e));
   }
 
 	h = gethostbyname(host);
@@ -38,7 +39,7 @@ stream.t connect(const char * host, int port) {
     global.close(sockfd);
 
     int e = h_errno;
-    return stream.error((stream.t) {0}, e, hstrerror(e));
+    return stream.error(NULL, e, hstrerror(e));
 	}
 
 	bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -52,21 +53,22 @@ stream.t connect(const char * host, int port) {
 	serv_addr.sin_port = htons(port);
 	if (global.connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
     int e = errno;
-    return stream.error((stream.t) {0}, e, strerror(e));
+    return stream.error(NULL, e, strerror(e));
   }
 
-  stream.t conn = file.new(sockfd);
-  conn.type = type();
+  stream.t * conn = file.new(sockfd);
+  conn->type = type();
   return conn;
 }
 
-export int hangup(stream.t conn) {
+export int hangup(stream.t * conn) {
   int fd = file.descriptor(conn);
   if (shutdown(fd, SHUT_RDWR) == 0) {
     return stream.close(conn);
   } else {
     int e = errno;
-    stream.error(conn, e, strerror(e));
+    conn->error.code    = e;
+    conn->error.message = strerror(e);
   }
   return -1;
 }

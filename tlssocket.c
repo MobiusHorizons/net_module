@@ -61,56 +61,59 @@ ssize_t tlssocket_close(void * ctx, stream_error_t * error) {
   return 0;
 }
 
-stream_t tlssocket_connect(const char * host, int port) {
+stream_t * tlssocket_connect(const char * host, int port) {
 	struct tls_config * cfg = NULL;
 	struct tls        * ctx = NULL;
 
 	if (tls_init() != 0) {
     int e = errno;
-    return stream_error((stream_t){0}, e, strerror(e));
+    return stream_error(NULL, e, strerror(e));
   }
 
 	if ((cfg = tls_config_new()) == NULL) {
     int e = errno;
-    return stream_error((stream_t){0}, e, strerror(e));
+    return stream_error(NULL, e, strerror(e));
   }
 
 	/* set root certificate (CA) */
 	if (tls_config_set_ca_file(cfg, "root.pem") != 0){
     int e = errno;
-    return stream_error((stream_t){0}, e, strerror(e));
+    return stream_error(NULL, e, strerror(e));
   }
 
 	if ((ctx = tls_client()) == NULL) {
     int e = errno;
-    return stream_error((stream_t){0}, e, strerror(e));
+    return stream_error(NULL, e, strerror(e));
   }
 
 	if (tls_configure(ctx, cfg) != 0) {
-    return stream_error((stream_t){0}, 2, tls_error(ctx));
+    return stream_error(NULL, 2, tls_error(ctx));
   }
   char port_ch[10];
   sprintf(port_ch, "%d", port);
 	if (tls_connect(ctx, host, port_ch) != 0){
-    return stream_error((stream_t){0}, 2, tls_error(ctx));
+    return stream_error(NULL, 2, tls_error(ctx));
   }
 
   state_t * state = malloc(sizeof(state_t));
   state->cfg = cfg;
   state->ctx = ctx;
 
-  stream_t s = {
-    .ctx   = state,
-    .read  = tlssocket_read,
-    .write = tlssocket_write,
-    .pipe  = NULL,
-    .close = tlssocket_close,
-    .error = {0},
-    .type  = tlssocket_type(),
-  };
+  stream_t * s = malloc(sizeof(stream_t));
+
+  s->ctx   = state;
+  s->read  = tlssocket_read;
+  s->write = tlssocket_write;
+  s->pipe  = NULL;
+  s->close = tlssocket_close;
+  s->type  = tlssocket_type();
+
+  s->error.code    = 0;
+  s->error.message = NULL;
+
   return s;
 }
 
-int tlssocket_hangup(stream_t conn) {
+int tlssocket_hangup(stream_t * conn) {
   return stream_close(conn);
 }

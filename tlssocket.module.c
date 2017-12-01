@@ -62,56 +62,59 @@ export ssize_t close(void * ctx, stream.error_t * error) {
 }
 
 export
-stream.t connect(const char * host, int port) {
+stream.t * connect(const char * host, int port) {
 	struct tls_config * cfg = NULL;
 	struct tls        * ctx = NULL;
 
 	if (tls_init() != 0) {
     int e = errno;
-    return stream.error((stream.t){0}, e, strerror(e));
+    return stream.error(NULL, e, strerror(e));
   }
 
 	if ((cfg = tls_config_new()) == NULL) {
     int e = errno;
-    return stream.error((stream.t){0}, e, strerror(e));
+    return stream.error(NULL, e, strerror(e));
   }
 
 	/* set root certificate (CA) */
 	if (tls_config_set_ca_file(cfg, "root.pem") != 0){
     int e = errno;
-    return stream.error((stream.t){0}, e, strerror(e));
+    return stream.error(NULL, e, strerror(e));
   }
 
 	if ((ctx = tls_client()) == NULL) {
     int e = errno;
-    return stream.error((stream.t){0}, e, strerror(e));
+    return stream.error(NULL, e, strerror(e));
   }
 
 	if (tls_configure(ctx, cfg) != 0) {
-    return stream.error((stream.t){0}, 2, tls_error(ctx));
+    return stream.error(NULL, 2, tls_error(ctx));
   }
   char port_ch[10];
   sprintf(port_ch, "%d", port);
 	if (tls_connect(ctx, host, port_ch) != 0){
-    return stream.error((stream.t){0}, 2, tls_error(ctx));
+    return stream.error(NULL, 2, tls_error(ctx));
   }
 
   state_t * state = malloc(sizeof(state_t));
   state->cfg = cfg;
   state->ctx = ctx;
 
-  stream.t s = {
-    .ctx   = state,
-    .read  = read,
-    .write = write,
-    .pipe  = NULL,
-    .close = close,
-    .error = {0},
-    .type  = type(),
-  };
+  stream.t * s = malloc(sizeof(stream.t));
+
+  s->ctx   = state;
+  s->read  = read;
+  s->write = write;
+  s->pipe  = NULL;
+  s->close = close;
+  s->type  = type();
+
+  s->error.code    = 0;
+  s->error.message = NULL;
+
   return s;
 }
 
-export int hangup(stream.t conn) {
+export int hangup(stream.t * conn) {
   return stream.close(conn);
 }
