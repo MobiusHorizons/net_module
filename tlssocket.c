@@ -75,11 +75,7 @@ stream_t * tlssocket_connect(const char * host, int port) {
     return stream_error(NULL, e, strerror(e));
   }
 
-	/* set root certificate (CA) */
-	if (tls_config_set_ca_file(cfg, "root.pem") != 0){
-    int e = errno;
-    return stream_error(NULL, e, strerror(e));
-  }
+  /* TODO: add API for config changes */
 
 	if ((ctx = tls_client()) == NULL) {
     int e = errno;
