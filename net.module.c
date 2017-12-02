@@ -1,4 +1,6 @@
+export {
 #include <stdbool.h>
+}
 #include <stdlib.h>
 
 import stream     from "../stream/stream.module.c";
